@@ -41,7 +41,7 @@ function App() {
       {/* Navbar */}
       <nav className="relative z-50 flex items-center justify-between px-6 py-6 md:px-12 max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
-          <Palette className="w-8 h-8 text-purple-400" />
+          <img src="/icon-192.png" alt="ColorMine Logo" className="w-8 h-8 object-contain" />
           <span className="text-2xl font-bold tracking-tight">ColorMine</span>
         </div>
         <div className="hidden md:flex items-center gap-8">
