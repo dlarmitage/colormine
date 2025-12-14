@@ -13,13 +13,15 @@ interface ColorWheelProps {
   value: number;
   whiteCenter: boolean;
   position: { x: number; y: number };
+  onInteractionEnd?: () => void;
 }
 
 export const ColorWheel: React.FC<ColorWheelProps> = ({
   size: initialSize,
   onChange,
   whiteCenter,
-  position
+  position,
+  onInteractionEnd
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bufferCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -240,6 +242,25 @@ export const ColorWheel: React.FC<ColorWheelProps> = ({
     }
   }, [size, onChange, whiteCenter]);
 
+  const handleInteractionEnd = useCallback(() => {
+    if (onInteractionEnd) onInteractionEnd();
+  }, [onInteractionEnd]);
+
+  useEffect(() => {
+    const handleGlobalUp = () => {
+      // We can just rely on the parent or canvas events, but global ensuring we catch end is safer for drag
+      // However, strictly sticking to canvas events is simpler for now.
+      // Actually, if we drag off canvas, we want to catch it.
+    };
+    window.addEventListener('mouseup', handleInteractionEnd);
+    window.addEventListener('touchend', handleInteractionEnd);
+    return () => {
+      window.removeEventListener('mouseup', handleInteractionEnd);
+      window.removeEventListener('touchend', handleInteractionEnd);
+    };
+  }, [handleInteractionEnd]);
+
+
   return (
     <div ref={containerRef} className="w-full max-w-xl mx-auto">
       <canvas
@@ -249,7 +270,7 @@ export const ColorWheel: React.FC<ColorWheelProps> = ({
       <canvas
         ref={canvasRef}
         className="touch-none cursor-pointer rounded-full shadow-lg mx-auto"
-        onClick={handleInteraction}
+        onClick={(e) => { handleInteraction(e); handleInteractionEnd(); }}
         onMouseDown={handleInteraction}
         onMouseMove={(e) => e.buttons === 1 && handleInteraction(e)}
         onTouchStart={(e) => {

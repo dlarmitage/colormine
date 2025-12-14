@@ -2,6 +2,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Copy, RotateCcw, Sun, Moon, Pipette } from 'lucide-react';
 import { ColorWheel } from './ColorWheel';
 import { ColorSlider } from './ColorSlider';
+import { ColorHistory } from './ColorHistory';
+import { HarmonyDisplay } from './HarmonyDisplay';
+import { PaletteManager } from './PaletteManager';
 
 export function ColorPickerTool() {
     const [whiteCenter, setWhiteCenter] = useState(true);
@@ -14,6 +17,7 @@ export function ColorPickerTool() {
     const [isUserAdjusting, setIsUserAdjusting] = useState(false);
     const [hexInput, setHexInput] = useState("#FF0000");
     const [rgbInput, setRgbInput] = useState("255, 0, 0");
+    const [historyTrigger, setHistoryTrigger] = useState(false);
 
     const hsvToRgb = useCallback((h: number, s: number, v: number) => {
         const c = v * s;
@@ -103,6 +107,8 @@ export function ColorPickerTool() {
         setSaturation(s);
         setValue(v);
         setPosition(calculateWheelPosition(h, s, v));
+        // Trigger history save on manual updates (direct input/sliders)
+        setHistoryTrigger(prev => !prev);
     }, [rgbToHsv, calculateWheelPosition, whiteCenter]);
 
 
@@ -125,6 +131,10 @@ export function ColorPickerTool() {
         setValue(v);
         setPosition(pos);
         setIsUserAdjusting(false);
+    }, []);
+
+    const handleInteractionEnd = useCallback(() => {
+        setHistoryTrigger(prev => !prev);
     }, []);
 
     const handleHexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,6 +183,23 @@ export function ColorPickerTool() {
         setShowCopied('rgb');
         setTimeout(() => setShowCopied(null), 2000);
     }, []);
+
+    const handleSelectExactColor = useCallback((hex: string) => {
+        const cleanHex = hex.replace('#', '');
+        const r = parseInt(cleanHex.substring(0, 2), 16);
+        const g = parseInt(cleanHex.substring(2, 4), 16);
+        const b = parseInt(cleanHex.substring(4, 6), 16);
+        updateColorFromRgb(r, g, b);
+    }, [updateColorFromRgb]);
+
+    const handleSelectHsvColor = useCallback((h: number, s: number, v: number) => {
+        setHue(h);
+        setSaturation(s);
+        setValue(v);
+        setPosition(calculateWheelPosition(h, s, v));
+        setHistoryTrigger(prev => !prev);
+    }, [calculateWheelPosition]);
+
 
     const handleEyeDropper = async () => {
         if (!('EyeDropper' in window)) {
@@ -229,8 +256,8 @@ export function ColorPickerTool() {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 items-center justify-center">
-                <div className="w-full max-w-md relative">
+            <div className="flex flex-col lg:flex-row gap-8 items-start justify-center">
+                <div className="w-full max-w-md relative flex-shrink-0">
                     {/* Glow effect behind the wheel */}
                     <div
                         className="absolute inset-0 rounded-full blur-[60px] opacity-20 transition-colors duration-500 pointer-events-none"
@@ -239,101 +266,120 @@ export function ColorPickerTool() {
                     <ColorWheel
                         size={Math.min(Math.min(window.innerWidth - 64, 400), window.innerHeight - 300)}
                         onChange={handleColorChange}
+                        onInteractionEnd={handleInteractionEnd}
                         hue={hue}
                         saturation={saturation}
                         value={value}
                         whiteCenter={whiteCenter}
                         position={position}
                     />
-                </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-black/20 rounded-2xl w-full lg:w-auto border border-white/5 backdrop-blur-sm">
-                    <div
-                        className="w-full h-32 md:w-32 md:h-72 rounded-2xl shadow-inner transition-all duration-300 ring-4 ring-white/5 bg-transparent"
-                        style={{ backgroundColor: hexColor }}
-                    />
-
-                    <div className="flex flex-col gap-3 w-full sm:w-auto">
-                        {/* Hex Display */}
-                        <div className="relative group">
-                            <div className="flex items-center justify-between gap-3 bg-black/40 p-3 pl-4 rounded-xl border border-white/10 w-full min-w-[240px]">
-                                <span className="text-gray-400 text-xs font-medium uppercase tracking-wider select-none">HEX</span>
-                                <div className="flex items-center gap-2 flex-grow">
-                                    <input
-                                        type="text"
-                                        value={hexInput}
-                                        onChange={handleHexChange}
-                                        className="hex-input bg-transparent border-none text-white font-mono text-lg uppercase focus:ring-0 w-full text-right p-0"
-                                    />
-                                    <button
-                                        onClick={copyToClipboard}
-                                        className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
-                                        title="Copy Hex Code"
-                                    >
-                                        <Copy size={18} />
-                                    </button>
-                                </div>
-                            </div>
-                            {showCopied === 'hex' && (
-                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-fade-in-up z-10">
-                                    Copied!
-                                </span>
-                            )}
-                        </div>
-
-                        {/* RGB Display */}
-                        <div className="relative group">
-                            <div className="flex items-center justify-between gap-3 bg-black/40 p-3 pl-4 rounded-xl border border-white/10 w-full min-w-[240px]">
-                                <span className="text-gray-400 text-xs font-medium uppercase tracking-wider select-none">RGB</span>
-                                <div className="flex items-center gap-2 flex-grow">
-                                    <input
-                                        type="text"
-                                        value={rgbInput}
-                                        onChange={handleRgbInputChange} // Use handleRgbInputChange here
-                                        className="rgb-input bg-transparent border-none text-white font-mono text-lg focus:ring-0 w-full text-right p-0"
-                                    />
-                                    <button
-                                        onClick={() => copyRgbToClipboard(rgb)}
-                                        className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
-                                        title="Copy RGB Values"
-                                    >
-                                        <Copy size={18} />
-                                    </button>
-                                </div>
-                            </div>
-                            {showCopied === 'rgb' && (
-                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-fade-in-up z-10">
-                                    Copied!
-                                </span>
-                            )}
-                        </div>
+                    <div className="mt-8">
+                        <HarmonyDisplay
+                            hue={hue}
+                            saturation={saturation}
+                            value={value}
+                            onSelectColor={handleSelectHsvColor}
+                        />
                     </div>
                 </div>
-            </div>
 
-            <div className="space-y-4 pt-4">
-                <div className="bg-black/20 p-4 rounded-2xl border border-white/5 space-y-4">
-                    <ColorSlider
-                        label="R"
-                        value={rgb.r}
-                        max={255}
-                        color="#FF4444"
-                        onChange={(v) => handleRgbSliderChange(v, rgb.g, rgb.b)}
+                <div className="flex flex-col gap-6 w-full lg:w-auto min-w-[320px]">
+                    <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-black/20 rounded-2xl border border-white/5 backdrop-blur-sm">
+                        <div
+                            className="w-full h-32 md:w-32 md:h-full min-h-[160px] rounded-2xl shadow-inner transition-all duration-300 ring-4 ring-white/5 bg-transparent"
+                            style={{ backgroundColor: hexColor }}
+                        />
+
+                        <div className="flex flex-col gap-3 w-full sm:w-auto flex-grow">
+                            {/* Hex Display */}
+                            <div className="relative group">
+                                <div className="flex items-center justify-between gap-3 bg-black/40 p-3 pl-4 rounded-xl border border-white/10 w-full min-w-[200px]">
+                                    <span className="text-gray-400 text-xs font-medium uppercase tracking-wider select-none">HEX</span>
+                                    <div className="flex items-center gap-2 flex-grow justify-end">
+                                        <input
+                                            type="text"
+                                            value={hexInput}
+                                            onChange={handleHexChange}
+                                            className="hex-input bg-transparent border-none text-white font-mono text-lg uppercase focus:ring-0 w-24 text-right p-0"
+                                        />
+                                        <button
+                                            onClick={copyToClipboard}
+                                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
+                                            title="Copy Hex Code"
+                                        >
+                                            <Copy size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                                {showCopied === 'hex' && (
+                                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-fade-in-up z-10">
+                                        Copied!
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* RGB Display */}
+                            <div className="relative group">
+                                <div className="flex items-center justify-between gap-3 bg-black/40 p-3 pl-4 rounded-xl border border-white/10 w-full min-w-[200px]">
+                                    <span className="text-gray-400 text-xs font-medium uppercase tracking-wider select-none">RGB</span>
+                                    <div className="flex items-center gap-2 flex-grow justify-end">
+                                        <input
+                                            type="text"
+                                            value={rgbInput}
+                                            onChange={handleRgbInputChange}
+                                            className="rgb-input bg-transparent border-none text-white font-mono text-lg focus:ring-0 w-32 text-right p-0"
+                                        />
+                                        <button
+                                            onClick={() => copyRgbToClipboard(rgb)}
+                                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
+                                            title="Copy RGB Values"
+                                        >
+                                            <Copy size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                                {showCopied === 'rgb' && (
+                                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-fade-in-up z-10">
+                                        Copied!
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-black/20 p-5 rounded-2xl border border-white/5 space-y-4">
+                        <ColorSlider
+                            label="R"
+                            value={rgb.r}
+                            max={255}
+                            color="#FF4444"
+                            onChange={(v) => handleRgbSliderChange(v, rgb.g, rgb.b)}
+                        />
+                        <ColorSlider
+                            label="G"
+                            value={rgb.g}
+                            max={255}
+                            color="#44FF44"
+                            onChange={(v) => handleRgbSliderChange(rgb.r, v, rgb.b)}
+                        />
+                        <ColorSlider
+                            label="B"
+                            value={rgb.b}
+                            max={255}
+                            color="#4444FF"
+                            onChange={(v) => handleRgbSliderChange(rgb.r, rgb.g, v)}
+                        />
+                    </div>
+
+                    <ColorHistory
+                        currentColor={hexColor}
+                        onSelectColor={handleSelectExactColor}
+                        triggerSave={historyTrigger}
                     />
-                    <ColorSlider
-                        label="G"
-                        value={rgb.g}
-                        max={255}
-                        color="#44FF44"
-                        onChange={(v) => handleRgbSliderChange(rgb.r, v, rgb.b)}
-                    />
-                    <ColorSlider
-                        label="B"
-                        value={rgb.b}
-                        max={255}
-                        color="#4444FF"
-                        onChange={(v) => handleRgbSliderChange(rgb.r, rgb.g, v)}
-                    />
+
+                    <PaletteManager currentColor={hexColor} />
+
                 </div>
             </div>
         </div>

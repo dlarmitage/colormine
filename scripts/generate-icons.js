@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SOURCE_IMAGE = '/Users/darmitage/.gemini/antigravity/brain/9ce00c2c-08f5-4859-a39a-a81495db7665/uploaded_image_1765672836663.png';
+const SOURCE_IMAGE = '/Users/darmitage/GitHub/color-wheel/public/new icon.png';
 const PUBLIC_DIR = path.join(__dirname, '../public');
 
 async function generateIcons() {
