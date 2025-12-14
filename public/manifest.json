@@ -4,8 +4,8 @@
   "description": "A revolutionary way to find your perfect color using our interactive color wheel and real-time tools!",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "icons": [
     {
       "src": "/icon-192.png",

@@ -1,204 +1,131 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Copy, RotateCcw, Sun, Moon } from 'lucide-react';
-import { ColorWheel } from './components/ColorWheel';
-import { ColorSlider } from './components/ColorSlider';
+
+import React, { useEffect } from 'react';
+import { Download, Palette, Zap, Layout } from 'lucide-react';
+import { ColorPickerTool } from './components/ColorPickerTool';
 
 function App() {
-  const [whiteCenter, setWhiteCenter] = useState(true);
-  const [hue, setHue] = useState(0);
-  const [saturation, setSaturation] = useState(1);
-  const [value, setValue] = useState(1);
-  const [position, setPosition] = useState({ x: 1, y: 0 });
-  const [showCopied, setShowCopied] = useState(false);
-  const [isUserAdjusting, setIsUserAdjusting] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
 
-  const toggleCenterMode = useCallback(() => {
-    setWhiteCenter(prev => !prev);
+  useEffect(() => {
+    // Check if PWA install prompt is available
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+    });
   }, []);
 
-  const reset = useCallback(() => {
-    setHue(0);
-    setSaturation(1);
-    setValue(1);
-    setPosition({ x: 1, y: 0 });
-    setWhiteCenter(true);
-  }, []);
-
-  const handleColorChange = useCallback(({ hue: h, saturation: s, value: v, position: pos }) => {
-    setIsUserAdjusting(true);
-    setHue(h);
-    setSaturation(s);
-    setValue(v);
-    setPosition(pos);
-    setIsUserAdjusting(false);
-  }, []);
-
-  const rgbToHsv = useCallback((r: number, g: number, b: number) => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const diff = max - min;
-
-    let h = 0;
-    if (diff === 0) h = 0;
-    else if (max === r) h = 60 * ((g - b) / diff % 6);
-    else if (max === g) h = 60 * ((b - r) / diff + 2);
-    else if (max === b) h = 60 * ((r - g) / diff + 4);
-    if (h < 0) h += 360;
-
-    const s = max === 0 ? 0 : diff / max;
-    const v = max;
-
-    return { h, s, v };
-  }, []);
-
-  const hsvToRgb = useCallback((h: number, s: number, v: number) => {
-    const c = v * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = v - c;
-
-    let r = 0, g = 0, b = 0;
-    if (h >= 0 && h < 60) { r = c; g = x; b = 0; }
-    else if (h >= 60 && h < 120) { r = x; g = c; b = 0; }
-    else if (h >= 120 && h < 180) { r = 0; g = c; b = x; }
-    else if (h >= 180 && h < 240) { r = 0; g = x; b = c; }
-    else if (h >= 240 && h < 300) { r = x; g = 0; b = c; }
-    else if (h >= 300 && h < 360) { r = c; g = 0; b = x; }
-
-    return {
-      r: Math.round((r + m) * 255),
-      g: Math.round((g + m) * 255),
-      b: Math.round((b + m) * 255)
-    };
-  }, []);
-
-  const calculateWheelPosition = useCallback((h: number, s: number, v: number) => {
-    const angleRad = (h * Math.PI) / 180;
-    let radius;
-    
-    if (v === 1) {
-      radius = s;
-    } else {
-      radius = v;
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
     }
-    
-    return {
-      x: Math.cos(angleRad) * radius,
-      y: Math.sin(angleRad) * radius
-    };
-  }, []);
+  };
 
-  const handleRgbChange = useCallback((r: number, g: number, b: number) => {
-    const { h, s, v } = rgbToHsv(r, g, b);
-    
-    const shouldBeWhiteCenter = v === 1;
-    if (whiteCenter !== shouldBeWhiteCenter) {
-      setWhiteCenter(shouldBeWhiteCenter);
-    }
-
-    setHue(h);
-    setSaturation(s);
-    setValue(v);
-    setPosition(calculateWheelPosition(h, s, v));
-  }, [rgbToHsv, calculateWheelPosition, whiteCenter]);
-
-  const rgb = hsvToRgb(hue, saturation, value);
-  const hexColor = `#${rgb.r.toString(16).padStart(2, '0')}${rgb.g.toString(16).padStart(2, '0')}${rgb.b.toString(16).padStart(2, '0')}`;
-
-  const copyToClipboard = useCallback(() => {
-    navigator.clipboard.writeText(hexColor);
-    setShowCopied(true);
-    setTimeout(() => setShowCopied(false), 2000);
-  }, [hexColor]);
+  const scrollToTool = () => {
+    document.getElementById('tool')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 space-y-6">
-        <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">ColorMine</h1>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleCenterMode}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              {whiteCenter ? <Sun size={18} /> : <Moon size={18} />}
-              Center Blend: {whiteCenter ? 'White' : 'Black'}
-            </button>
-            
-            <button
-              onClick={reset}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              <RotateCcw size={18} />
-              Reset
-            </button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0a] text-white font-['Outfit'] overflow-x-hidden selection:bg-purple-500 selection:text-white">
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px] animate-pulse delay-700" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-pink-600/20 rounded-full blur-[120px] animate-pulse delay-1000" />
+      </div>
 
-        <div className="flex flex-col md:flex-row gap-8 items-center justify-center">
-          <div className="w-full max-w-md">
-            <ColorWheel
-              size={Math.min(Math.min(window.innerWidth - 32, 400), window.innerHeight - 300)}
-              onChange={handleColorChange}
-              hue={hue}
-              saturation={saturation}
-              value={value}
-              whiteCenter={whiteCenter}
-              position={position}
-            />
+      {/* Navbar */}
+      <nav className="relative z-50 flex items-center justify-between px-6 py-6 md:px-12 max-w-7xl mx-auto">
+        <div className="flex items-center gap-2">
+          <Palette className="w-8 h-8 text-purple-400" />
+          <span className="text-2xl font-bold tracking-tight">ColorMine</span>
+        </div>
+        <div className="hidden md:flex items-center gap-8">
+          <a href="#features" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Features</a>
+          <button
+            onClick={scrollToTool}
+            className="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full backdrop-blur-md transition-all text-sm font-medium"
+          >
+            Launch App
+          </button>
+        </div>
+      </nav>
+
+      <main className="relative z-10 w-full">
+        {/* Hero Section */}
+        <section className="relative px-6 py-20 md:py-32 max-w-7xl mx-auto flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-purple-300 mb-6 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+            </span>
+            New: PWA Support
           </div>
-          
-          <div className="flex flex-col md:flex-row items-center gap-4 p-6 bg-gray-50 rounded-xl w-full md:w-auto">
-            <div 
-              className="w-full h-24 md:w-24 md:h-72 rounded-lg shadow-inner transition-all duration-300" 
-              style={{ backgroundColor: hexColor }}
-            />
-            <div className="relative">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-lg">{hexColor}</span>
-                <button
-                  onClick={copyToClipboard}
-                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <Copy size={18} />
-                </button>
-              </div>
-              {showCopied && (
-                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-sm px-2 py-1 rounded">
-                  Copied!
-                </span>
-              )}
+
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 bg-gradient-to-br from-white via-white to-gray-500 bg-clip-text text-transparent">
+            Colors, Elevated.
+          </h1>
+
+          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mb-12 leading-relaxed">
+            The professional color picker for modern designers.
+            Experience a fluid color selection workflow with our advanced HSB wheel and
+            real-time conversion tools.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <button
+              onClick={scrollToTool}
+              className="px-8 py-4 bg-white text-black font-semibold rounded-full hover:bg-gray-100 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] flex items-center gap-2"
+            >
+              Start Creating
+              <Palette size={20} />
+            </button>
+            <button
+              onClick={handleInstallClick}
+              disabled={!deferredPrompt}
+              className="px-8 py-4 bg-white/5 text-white font-medium rounded-full hover:bg-white/10 border border-white/10 backdrop-blur-md transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Install PWA
+              <Download size={20} />
+            </button>
+          </div>
+        </section>
+
+        {/* Tool Section */}
+        <section id="tool" className="px-4 py-12 md:px-8 max-w-6xl mx-auto mb-20">
+          <ColorPickerTool />
+        </section>
+
+        {/* Features Grid */}
+        <section id="features" className="px-6 py-24 max-w-7xl mx-auto border-t border-white/5">
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors">
+              <Zap className="w-10 h-10 text-yellow-400 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Lightning Fast</h3>
+              <p className="text-gray-400">Built with Vite and React for instant load times and smooth 60fps interaction.</p>
+            </div>
+            <div className="p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors">
+              <Layout className="w-10 h-10 text-blue-400 mb-4" />
+              <h3 className="text-xl font-bold mb-2">PWA Ready</h3>
+              <p className="text-gray-400">Install it on your device and use it offline. Works seamlessly on mobile and desktop.</p>
+            </div>
+            <div className="p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors">
+              <Palette className="w-10 h-10 text-pink-400 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Professional Grade</h3>
+              <p className="text-gray-400">Accurate HSB-RGB conversion with a center-blend mode for precise tint and shade control.</p>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="space-y-3">
-          <ColorSlider
-            label="R"
-            value={rgb.r}
-            max={255}
-            color="#FF0000"
-            onChange={(v) => handleRgbChange(v, rgb.g, rgb.b)}
-          />
-          <ColorSlider
-            label="G"
-            value={rgb.g}
-            max={255}
-            color="#00FF00"
-            onChange={(v) => handleRgbChange(rgb.r, v, rgb.b)}
-          />
-          <ColorSlider
-            label="B"
-            value={rgb.b}
-            max={255}
-            color="#0000FF"
-            onChange={(v) => handleRgbChange(rgb.r, rgb.g, v)}
-          />
-        </div>
-      </div>
+        {/* Footer */}
+        <footer className="py-12 text-center text-gray-500 border-t border-white/5 bg-black/50 backdrop-blur-xl">
+          <p>© {new Date().getFullYear()} ColorMine. All rights reserved.</p>
+        </footer>
+      </main>
     </div>
   );
 }

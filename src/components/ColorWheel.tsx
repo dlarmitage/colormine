@@ -2,9 +2,9 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 
 interface ColorWheelProps {
   size: number;
-  onChange: (color: { 
-    hue: number; 
-    saturation: number; 
+  onChange: (color: {
+    hue: number;
+    saturation: number;
     value: number;
     position: { x: number; y: number };
   }) => void;
@@ -15,9 +15,9 @@ interface ColorWheelProps {
   position: { x: number; y: number };
 }
 
-export const ColorWheel: React.FC<ColorWheelProps> = ({ 
-  size: initialSize, 
-  onChange, 
+export const ColorWheel: React.FC<ColorWheelProps> = ({
+  size: initialSize,
+  onChange,
   whiteCenter,
   position
 }) => {
@@ -52,9 +52,9 @@ export const ColorWheel: React.FC<ColorWheelProps> = ({
     if (!bufferCanvasRef.current) return;
 
     const canvas = bufferCanvasRef.current;
-    const ctx = canvas.getContext('2d', { 
+    const ctx = canvas.getContext('2d', {
       alpha: false,
-      willReadFrequently: true 
+      willReadFrequently: true
     });
     if (!ctx) return;
 
@@ -111,16 +111,15 @@ export const ColorWheel: React.FC<ColorWheelProps> = ({
 
   const drawWheel = useCallback(() => {
     if (!canvasRef.current || !bufferCanvasRef.current) return;
-    
+
     const now = performance.now();
     if (now - lastDrawTime.current < 16) return;
-    
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, size, size);
+    ctx.clearRect(0, 0, size, size);
     ctx.drawImage(bufferCanvasRef.current, 0, 0);
 
     const centerX = size / 2;
@@ -173,7 +172,7 @@ export const ColorWheel: React.FC<ColorWheelProps> = ({
 
     const ctx = canvas.getContext('2d');
     const bufferCtx = bufferCanvas.getContext('2d');
-    
+
     if (ctx && bufferCtx) {
       ctx.scale(scale, scale);
       bufferCtx.scale(scale, scale);
@@ -188,33 +187,11 @@ export const ColorWheel: React.FC<ColorWheelProps> = ({
     wheelImageData.current = null;
     createWheelBuffer();
     drawWheel();
+  }, [size, createWheelBuffer, drawWheel]);
 
-    const centerX = size / 2;
-    const centerY = size / 2;
-    const radius = (size / 2) - 2;
-    const dx = position.x * radius;
-    const dy = position.y * radius;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const distanceRatio = Math.min(distance / radius, 1);
-    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    if (angle < 0) angle += 360;
-
-    let s, v;
-    if (whiteCenter) {
-      s = distanceRatio;
-      v = 1;
-    } else {
-      s = 1;
-      v = distanceRatio;  // Changed: Removed the 1 - distanceRatio
-    }
-
-    onChange({
-      hue: angle,
-      saturation: s,
-      value: v,
-      position
-    });
-  }, [whiteCenter, size, position, onChange, createWheelBuffer, drawWheel]);
+  useEffect(() => {
+    drawWheel();
+  }, [position, drawWheel]);
 
   const handleInteraction = useCallback((event: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
@@ -234,12 +211,14 @@ export const ColorWheel: React.FC<ColorWheelProps> = ({
 
     const radius = (size / 2) - 2;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    if (distance <= radius) {
+
+    // Allow clicking slightly outside (padding) for better UX
+    if (distance <= radius + 10) {
       const normalizedX = dx / radius;
       const normalizedY = dy / radius;
+      // Clamp distance ratio to 1
       const distanceRatio = Math.min(distance / radius, 1);
-      
+
       let angle = Math.atan2(dy, dx) * (180 / Math.PI);
       if (angle < 0) angle += 360;
 
@@ -249,9 +228,9 @@ export const ColorWheel: React.FC<ColorWheelProps> = ({
         v = 1;
       } else {
         s = 1;
-        v = distanceRatio;  // Changed: Removed the 1 - distanceRatio
+        v = distanceRatio;
       }
-      
+
       onChange({
         hue: angle,
         saturation: s,

@@ -3,6 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dlarmitage/colormine.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,6 +14,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "jimp": "^1.6.0",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -25,6 +30,7 @@
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "postcss": "^8.4.35",
+    "puppeteer": "^24.33.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",

@@ -11,8 +11,8 @@ export default defineConfig({
       manifest: {
         name: 'ColorMine',
         short_name: 'ColorMine',
-        description: 'Professional Color Picker PWA',
-        theme_color: '#ffffff',
+        description: 'A revolutionary way to find your perfect color using our interactive color wheel and real-time tools!',
+        theme_color: '#0a0a0a',
         icons: [
           {
             src: '/icon-192.png',
